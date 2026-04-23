@@ -1,8 +1,15 @@
-# 🚀 NewsImpact Pro — Antigravity Production Spec
+# 🚀 NewsImpact Pro
 
-> **Version:** 1.0.0 — Production Ready  
-> **Stack:** Flutter · Firebase · GetX  
-> **Status:** 🟢 Build Ready
+![NewsImpact Pro Mockup](file:///C:/Users/SHADIL/.gemini/antigravity/brain/8bbcb52a-eeca-4959-9888-3ee1befe4107/newsimpact_pro_mockup_1776932706881.png)
+
+[![Version](https://img.shields.io/badge/version-1.0.0--beta-blue.svg)](https://github.com/AflahShadilk/newsimpactpro)
+[![Build Status](https://img.shields.io/badge/status-🟢_Build_Ready-green.svg)](https://github.com/AflahShadilk/newsimpactpro)
+[![Flutter](https://img.shields.io/badge/Flutter-Latest-blue.svg?logo=flutter)](https://flutter.dev)
+[![Firebase](https://img.shields.io/badge/Firebase-Production-orange.svg?logo=firebase)](https://firebase.google.com)
+[![GetX](https://img.shields.io/badge/State-GetX-purple.svg)](https://pub.dev/packages/get)
+
+NewsImpact Pro is a professional-grade forex trading assistant designed by **Antigravity**. It leverages high-frequency economic data, historical impact analysis, and real-time push notifications to give traders a directional edge before and after major news events.
+
 
 ---
 
@@ -48,23 +55,32 @@
 
 ## 2. System Architecture
 
+```mermaid
+graph TD
+    CAL[Economic Calendar API]
+    subgraph Cloud Functions
+        FET[Fetcher - runs every 5m]
+        PRO[Processor - filters & deduplicates]
+        ANL[Analysis Engine - bias & directional probability]
+        SCH[Scheduler - checks alert_time vs now]
+    end
+    DB1[(Firestore: news_events)]
+    DB2[(Firestore: news_history)]
+    FCM[Firebase Cloud Messaging]
+    APP[Flutter App]
+
+    CAL --> FET
+    FET --> PRO
+    PRO --> DB1
+    DB1 --> ANL
+    DB2 -.-> ANL
+    ANL --> DB1
+    DB1 --> SCH
+    SCH --> FCM
+    FCM --> APP
+    APP --> |Store User Prefs| DB1
 ```
-[Economic Calendar API]
-        ↓
-   [Cloud Function: Fetcher]          ← runs every 5 min
-        ↓
-   [Cloud Function: Processor]        ← filters high/medium, deduplicates
-        ↓
-   [Firestore: news_events]           ← live upcoming events
-        ↓
-   [Cloud Function: Analysis Engine]  ← reads news_history, computes bias
-        ↓
-   [Cloud Function: Scheduler]        ← checks alert_time vs now
-        ↓
-   [Firebase Cloud Messaging (FCM)]   ← pushes to user device tokens
-        ↓
-      [Flutter App]                   ← renders UI, stores user prefs
-```
+
 
 ---
 
@@ -99,19 +115,19 @@
 
 ### 4.1 Auth Flow
 
+```mermaid
+flowchart TD
+    Start([App Launch]) --> CheckAuth{Auth.currentUser?}
+    CheckAuth -->|Yes| Load[Load Firestore Document]
+    Load --> Home[Home Screen]
+    CheckAuth -->|No| Login[Login Screen]
+    Login --> Sign[Email/Password or Google]
+    Sign --> New{Initial Setup?}
+    New -->|Yes| Write[Initialize Firestore Doc]
+    New -->|No| Load
+    Write --> Home
 ```
-App Launch
-    ↓
-Check FirebaseAuth.currentUser
-    ├── Exists → load user doc from Firestore → go to Home
-    └── Null  → show Login Screen
-                  ├── Email/Password → createUser or signIn
-                  └── Google Sign-In → GoogleAuthProvider
-                                ↓
-                        Write user doc to Firestore (first time only)
-                                ↓
-                           Go to Home
-```
+
 
 ### 4.2 User Document — Firestore `users/{uid}`
 
@@ -473,24 +489,24 @@ double avgVolatility = history.map((e) => e.volatility).reduce((a, b) => a + b) 
 
 ### 10.1 Home Screen
 
+```mermaid
+graph TD
+    subgraph Home Screen
+        H1(Top Bar: App Title + Settings Icon)
+        H2(Filter Row: USD, EUR, GBP, All)
+        H3(Impact Row: High, Medium)
+        H4(News List: Scrollable Cards)
+    end
+    H4 --> C1(Red Badge: High Impact)
+    H4 --> C2(Orange Badge: Medium Impact)
+    H4 --> C3(Grey Badge: Released)
 ```
-┌─────────────────────────────────┐
-│  NewsImpact Pro        [⚙ icon] │  ← Top bar
-├─────────────────────────────────┤
-│  [USD] [EUR] [GBP] [All]        │  ← _filterChip row
-│  [High] [Medium]                │
-├─────────────────────────────────┤
-│  ┌───────────────────────────┐  │
-│  │ 🔴 HIGH  USD CPI m/m      │  │  ← _newsCard
-│  │ 13:30 UTC | Forecast: 0.3 │  │
-│  │ ⏰ Alert in 14 min         │  │
-│  └───────────────────────────┘  │
-│  ┌───────────────────────────┐  │
-│  │ 🟡 MED  EUR GDP q/q       │  │  ← _newsCard
-│  │ 09:00 UTC | Forecast: 0.1 │  │
-│  └───────────────────────────┘  │
-└─────────────────────────────────┘
-```
+
+**Mobile Visual Reference:**
+- 🔴 **High Impact** — `accentRed`
+- 🟡 **Medium Impact** — `accentOrange`
+- ⚪ **Released** — `textSecondary`
+
 
 **Color coding:**
 - 🔴 High Impact — `Colors.red`
@@ -499,125 +515,60 @@ double avgVolatility = history.map((e) => e.volatility).reduce((a, b) => a + b) 
 
 ### 10.2 Detail Screen
 
+```mermaid
+graph TD
+    subgraph Detail Screen
+        D1(Header: Currency + Event Name + Impact)
+        D2(Event Info: Date/Time + Forecast + Previous + Actual)
+        D3(Analysis Panel: Historical Stats + Volatility)
+        D4(Prediction Panel: Bias + Confidence %)
+        D5(Volatility Meter: Pip Range Visualization)
+        D6(Guidance Panel: Actionable Trade Strategy)
+    end
 ```
-┌─────────────────────────────────┐
-│  ← USD CPI m/m          🔴 HIGH │
-├─────────────────────────────────┤
-│  📅 Apr 22 · 13:30 UTC          │
-│  Forecast: 0.3 | Prev: 0.2      │
-│  Actual: 0.5 (Released ✅)      │
-├─────────────────────────────────┤
-│  📊 HISTORICAL ANALYSIS         │  ← _analysisPanel
-│  Last 8 events: 6 bullish 2 bear│
-│  Avg Volatility: 98 pips        │
-├─────────────────────────────────┤
-│  🎯 PREDICTION                  │  ← _predictionPanel
-│  Bullish Bias (75% confidence)  │
-│  "Spike + continuation expected"│
-├─────────────────────────────────┤
-│  ⚡ VOLATILITY METER            │  ← _volatilityMeter
-│  ████████░░  120 pips           │
-├─────────────────────────────────┤
-│  🛡 TRADE GUIDANCE              │  ← _guidancePanel
-│  Wait for spike + retest before │
-│  entering long position.        │
-└─────────────────────────────────┘
-```
+
 
 ### 10.3 Settings Screen
 
+```mermaid
+graph TD
+    subgraph Settings Screen
+        S1(Alert Timing: 5 / 15 / 30 min)
+        S2(Currency Filter: Toggle USD, EUR, etc.)
+        S3(Impact Filter: Toggle High, Medium)
+        S4(Focus Mode: Toggle High-Impact Only)
+        S5(Notifications: Global Enable/Disable)
+        S6(Timezone: IANA Timezone Selection)
+    end
 ```
-┌─────────────────────────────────┐
-│  ← Settings                     │
-├─────────────────────────────────┤
-│  ALERT TIMING                   │
-│  ○ 5 min  ● 15 min  ○ 30 min   │
-├─────────────────────────────────┤
-│  CURRENCY FILTER                │
-│  ☑ USD  ☑ EUR  ☐ GBP  ☐ JPY   │
-├─────────────────────────────────┤
-│  IMPACT FILTER                  │
-│  ☑ High  ☑ Medium               │
-├─────────────────────────────────┤
-│  FOCUS MODE                     │
-│  Show high impact only  [toggle]│
-├─────────────────────────────────┤
-│  NOTIFICATIONS        [toggle]  │
-├─────────────────────────────────┤
-│  TIMEZONE                       │
-│  America/New_York          [>]  │
-└─────────────────────────────────┘
-```
+
 
 ---
 
 ## 11. Flutter Project Structure
 
+```mermaid
+graph LR
+    subgraph lib
+        CORE[core] --> THEME[theme]
+        CORE --> CONST[constants]
+        CORE --> UTILS[utils]
+        
+        DATA[data] --> MODS[models]
+        DATA --> REPO[repositories]
+        
+        MOD[modules] --> AUTH[auth]
+        MOD --> HOME[home]
+        MOD --> DET[detail]
+        MOD --> SET[settings]
+        
+        SERV[services]
+        WIDG[widgets]
+        PAGE[routes]
+        MAIN[main.dart]
+    end
 ```
-lib/
-├── core/
-│   ├── theme/
-│   │   ├── app_theme.dart          # Global MaterialTheme
-│   │   └── app_colors.dart         # Color constants
-│   ├── constants/
-│   │   ├── app_strings.dart        # UI text constants
-│   │   └── app_routes.dart         # Named route constants
-│   └── utils/
-│       ├── date_utils.dart         # Timezone + formatting helpers
-│       └── impact_utils.dart       # Impact → color/label helpers
-│
-├── data/
-│   ├── models/
-│   │   ├── news_event.dart         # NewsEvent model
-│   │   ├── news_history.dart       # NewsHistory model
-│   │   ├── user_model.dart         # UserModel
-│   │   ├── analysis_result.dart    # AnalysisResult model
-│   │   └── notification_log.dart   # NotificationLog model
-│   └── repositories/
-│       ├── news_repository.dart    # Firestore queries for news
-│       ├── history_repository.dart # Firestore queries for history
-│       └── user_repository.dart    # Firestore queries for user doc
-│
-├── modules/
-│   ├── auth/
-│   │   ├── login_screen.dart
-│   │   └── auth_controller.dart
-│   ├── home/
-│   │   ├── home_screen.dart
-│   │   └── home_controller.dart
-│   ├── detail/
-│   │   ├── detail_screen.dart
-│   │   └── detail_controller.dart
-│   └── settings/
-│       ├── settings_screen.dart
-│       └── settings_controller.dart
-│
-├── controllers/
-│   ├── news_controller.dart        # Fetch + store news
-│   ├── analysis_controller.dart    # Bias + confidence logic
-│   ├── notification_controller.dart# FCM token + message handling
-│   └── settings_controller.dart    # User preference state
-│
-├── services/
-│   ├── firebase_service.dart       # Firestore init + helpers
-│   ├── fcm_service.dart            # FCM setup + token management
-│   ├── auth_service.dart           # Firebase Auth operations
-│   └── news_api_service.dart       # External calendar API fetch
-│
-├── widgets/
-│   ├── _news_card.dart
-│   ├── _impact_badge.dart
-│   ├── _analysis_panel.dart
-│   ├── _prediction_panel.dart
-│   ├── _guidance_panel.dart
-│   ├── _volatility_meter.dart
-│   └── _filter_chip.dart
-│
-├── routes/
-│   └── app_pages.dart              # GetX route definitions
-│
-└── main.dart                       # App entry point + Firebase init
-```
+
 
 ---
 
@@ -942,6 +893,53 @@ test/widget/
 ✅ Never expose FCM tokens or user data in logs
 ✅ Test analysis engine with 0, 1, and 10 history records
 ```
+
+---
+
+## 23. Getting Started
+
+### Prerequisites
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (latest stable)
+- [Firebase CLI](https://firebase.google.com/docs/cli)
+- Android Studio / VS Code with Flutter extension
+
+### Installation
+1. **Clone the Repo:**
+   ```bash
+   git clone https://github.com/AflahShadilk/newsimpactpro.git
+   cd newsimpactpro
+   ```
+2. **Install Dependencies:**
+   ```bash
+   flutter pub get
+   ```
+3. **Setup Firebase:**
+   - Create a project on [Firebase Console](https://console.firebase.google.com/).
+   - Run `flutterfire configure` to generate `firebase_options.dart`.
+4. **Run the App:**
+   ```bash
+   flutter run
+   ```
+
+---
+
+## 24. Project Roadmap
+
+- [ ] **Phase 1: Foundation**
+  - [x] Project Structure & Specification
+  - [ ] Auth & Firebase Integration
+- [ ] **Phase 2: Core Analysis**
+  - [ ] Economic Calendar Fetching (Cloud Functions)
+  - [ ] Analysis Engine & Bias Calculation
+- [ ] **Phase 3: Real-time Alerts**
+  - [ ] FCM Push Notification Setup
+  - [ ] Background Scheduling logic
+- [ ] **Phase 4: UI/UX Implementation**
+  - [ ] Home & Detail Screens (Antigravity Design)
+  - [ ] Settings & Preferences
+- [ ] **Phase 5: Polish & Release**
+  - [ ] Unit & Integration Testing
+  - [ ] Play Store Submission
 
 ---
 
