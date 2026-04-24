@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "923289747639",
+    "project_id": "newsimpactpro",
+    "storage_bucket": "newsimpactpro.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:923289747639:android:7e53b355b1c3918b054d32",
+        "android_client_info": {
+          "package_name": "com.example.newsimpactpro"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "923289747639-if80a43rs0i5c8o1mpntuddss23ef79t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.newsimpactpro",
+            "certificate_hash": "e8d7ea65839a7f64e3c4c18fc26c83fe0ac9c4b5"
+          }
+        },
+        {
+          "client_id": "923289747639-jjrrpu9lg6nfklj1gl6dbbs6tfusqdfv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCI1ojciZUvHPgPHfA3wTD0BLHmgU4Qo_I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "923289747639-jjrrpu9lg6nfklj1gl6dbbs6tfusqdfv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

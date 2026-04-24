@@ -1,13 +1,13 @@
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
-import '../services/firebase_service.dart';
+import '../data/repositories/user_repository.dart';
 import '../data/models/user_model.dart';
 import '../routes/app_routes.dart';
 
 class AuthController extends GetxController {
   final AuthService _authService = AuthService();
-  final FirebaseService _firebaseService = FirebaseService();
+  final UserRepository _userRepository = UserRepository();
 
   final Rxn<User> firebaseUser = Rxn<User>();
   final Rxn<UserModel> userModel = Rxn<UserModel>();
@@ -34,7 +34,7 @@ class AuthController extends GetxController {
   }
 
   Future<void> _loadUserModel(String uid) async {
-    final model = await _firebaseService.getUser(uid);
+    final model = await _userRepository.getUser(uid);
     if (model != null) {
       userModel.value = model;
     } else {
@@ -44,7 +44,7 @@ class AuthController extends GetxController {
         email: firebaseUser.value?.email ?? '',
         displayName: firebaseUser.value?.displayName ?? 'Trader',
         photoUrl: firebaseUser.value?.photoURL ?? '',
-        fcmToken: '', // Will be updated by NotificationController
+        fcmToken: '', 
         currencies: ['USD', 'EUR', 'GBP'],
         impact: ['high', 'medium'],
         alertTime: 15,
@@ -52,7 +52,7 @@ class AuthController extends GetxController {
         timezone: 'UTC',
         notificationsEnabled: true,
       );
-      await _firebaseService.saveUser(newUser);
+      await _userRepository.saveUser(newUser);
       userModel.value = newUser;
     }
   }
@@ -75,7 +75,7 @@ class AuthController extends GetxController {
   Future<void> updateUser(Map<String, dynamic> data) async {
     if (firebaseUser.value == null) return;
     try {
-      await _firebaseService.updateUserFields(firebaseUser.value!.uid, data);
+      await _userRepository.updateUserFields(firebaseUser.value!.uid, data);
       // Update local model
       if (userModel.value != null) {
         final updatedData = userModel.value!.toFirestore();

@@ -5,6 +5,7 @@ import '../../controllers/news_controller.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
+import '../../services/sync_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -13,6 +14,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
     final newsController = Get.find<NewsController>();
+    final syncService = Get.find<SyncService>();
 
     return Scaffold(
       appBar: AppBar(
@@ -113,6 +115,12 @@ class SettingsScreen extends StatelessWidget {
                 selected: authController.userModel.value?.impact ?? [],
                 onSave: (val) => authController.updateUser({'impact': val}),
               ),
+            ),
+            _buildSettingTile(
+              title: 'Sync Mock Data',
+              subtitle: 'Populate Firestore with sample news',
+              trailing: const Icon(Icons.sync_rounded, color: AppColors.accentBlue),
+              onTap: () => syncService.syncMockData(),
             ),
 
             const SizedBox(height: 48),

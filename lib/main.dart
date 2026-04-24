@@ -5,6 +5,7 @@ import 'core/theme/app_theme.dart';
 import 'routes/app_routes.dart';
 import 'controllers/auth_controller.dart';
 import 'services/notification_service.dart';
+import 'services/sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,6 +15,7 @@ void main() async {
 
   // Initialize Services
   await Get.putAsync(() => NotificationService().init());
+  Get.put(SyncService());
 
   // Initialize AuthController
   Get.put(AuthController());
