@@ -26,11 +26,14 @@ class SettingsScreen extends StatelessWidget {
           onPressed: () => Get.back(),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppConstants.horizontalPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: AppConstants.maxContentWidth),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppConstants.horizontalPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             // Profile Section
             _buildSectionHeader('Account'),
             Obx(() {

@@ -76,6 +76,18 @@ class AuthController extends GetxController {
     if (firebaseUser.value == null) return;
     try {
       await _userRepository.updateUserFields(firebaseUser.value!.uid, data);
+      
+      // Handle topic subscriptions if currencies changed
+      if (data.containsKey('currencies')) {
+        final List<String> newCurrencies = List<String>.from(data['currencies']);
+        final notificationService = Get.find<NotificationService>();
+        
+        // Simple logic: re-subscribe to all new ones
+        for (var c in newCurrencies) {
+          notificationService.subscribeToTopic('news_$c');
+        }
+      }
+
       // Update local model
       if (userModel.value != null) {
         final updatedData = userModel.value!.toFirestore();

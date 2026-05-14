@@ -11,6 +11,7 @@ class AppConstants {
   static const double horizontalPadding = 20.0;
   static const double verticalPadding = 16.0;
   static const double cardRadius = 16.0;
+  static const double maxContentWidth = 850.0;
 
   // Forex Factory — Public JSON export (no key required, max 2 req/5min, updates hourly)
   static const String forexFactoryCalendarUrl =

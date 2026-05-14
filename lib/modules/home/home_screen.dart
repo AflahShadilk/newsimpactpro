@@ -54,14 +54,19 @@ class HomeScreen extends GetView<NewsController> {
             _buildFilters(),
             
             Expanded(
-              child: TabBarView(
-                children: [
-                  // Upcoming News Tab
-                  _buildNewsList(context, syncService),
-                  
-                  // History Tab
-                  _buildHistoryList(context),
-                ],
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: AppConstants.maxContentWidth),
+                  child: TabBarView(
+                    children: [
+                      // Upcoming News Tab
+                      _buildNewsList(context, syncService),
+                      
+                      // History Tab
+                      _buildHistoryList(context),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
@@ -84,11 +89,11 @@ class HomeScreen extends GetView<NewsController> {
       final events = controller.filteredEvents;
 
       if (events.isEmpty) {
-        return _buildEmptyState(context, 'No upcoming events found');
+        return _buildEmptyState('No news events found for your filters.');
       }
 
       return RefreshIndicator(
-        onRefresh: () => syncService.syncLiveNewsData(),
+        onRefresh: () => syncService.syncLiveNewsData(force: true),
         color: AppColors.accentBlue,
         child: ListView.separated(
           padding: const EdgeInsets.all(AppConstants.horizontalPadding),
@@ -134,36 +139,43 @@ class HomeScreen extends GetView<NewsController> {
     });
   }
 
-  Widget _buildEmptyState(BuildContext context, String message) {
+  Widget _buildEmptyState(String message) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.event_busy_rounded, size: 64, color: AppColors.textMuted),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
-          ),
-        ],
-      ),
+      child: Builder(builder: (context) {
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.event_busy_rounded, size: 64, color: AppColors.textMuted.withOpacity(0.3)),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        );
+      }),
     );
   }
 
   Widget _buildFilters() {
-    return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: AppConstants.horizontalPadding),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          _filterChip('USD'),
-          _filterChip('EUR'),
-          _filterChip('GBP'),
-          const VerticalDivider(width: 32, indent: 16, endIndent: 16),
-          _impactChip('high', AppColors.accentRed),
-          _impactChip('medium', AppColors.accentOrange),
-        ],
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppConstants.maxContentWidth),
+        child: Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: AppConstants.horizontalPadding),
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              _filterChip('USD'),
+              _filterChip('EUR'),
+              _filterChip('GBP'),
+              const VerticalDivider(width: 32, indent: 16, endIndent: 16),
+              _impactChip('high', AppColors.accentRed),
+              _impactChip('medium', AppColors.accentOrange),
+            ],
+          ),
+        ),
       ),
     );
   }
