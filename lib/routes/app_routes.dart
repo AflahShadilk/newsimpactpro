@@ -3,7 +3,6 @@ import '../modules/auth/login_screen.dart';
 import '../modules/home/home_screen.dart';
 import '../modules/detail/detail_screen.dart';
 import '../modules/settings/settings_screen.dart';
-import '../controllers/news_controller.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -18,10 +17,8 @@ class AppRoutes {
     ),
     GetPage(
       name: home,
+      // NewsController is registered as permanent in main.dart — no binding needed here
       page: () => const HomeScreen(),
-      binding: BindingsBuilder(() {
-        Get.put(NewsController());
-      }),
     ),
     GetPage(
       name: detail,

@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/news_controller.dart';
@@ -5,7 +7,9 @@ import '../../controllers/auth_controller.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../widgets/news_card.dart';
+import '../../widgets/news_card_skeleton.dart';
 import '../../widgets/history_card.dart';
+import '../../services/sync_service.dart';
 
 class HomeScreen extends GetView<NewsController> {
   const HomeScreen({super.key});
@@ -13,6 +17,7 @@ class HomeScreen extends GetView<NewsController> {
   @override
   Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
+    final syncService = Get.find<SyncService>();
 
     return DefaultTabController(
       length: 2,
@@ -52,7 +57,7 @@ class HomeScreen extends GetView<NewsController> {
               child: TabBarView(
                 children: [
                   // Upcoming News Tab
-                  _buildNewsList(context),
+                  _buildNewsList(context, syncService),
                   
                   // History Tab
                   _buildHistoryList(context),
@@ -65,10 +70,15 @@ class HomeScreen extends GetView<NewsController> {
     );
   }
 
-  Widget _buildNewsList(BuildContext context) {
+  Widget _buildNewsList(BuildContext context, SyncService syncService) {
     return Obx(() {
       if (controller.isLoading.value) {
-        return const Center(child: CircularProgressIndicator(color: AppColors.accentBlue));
+        return ListView.separated(
+          padding: const EdgeInsets.all(AppConstants.horizontalPadding),
+          itemCount: 6,
+          separatorBuilder: (context, index) => const SizedBox(height: 16),
+          itemBuilder: (context, index) => const NewsCardSkeleton(),
+        );
       }
 
       final events = controller.filteredEvents;
@@ -78,7 +88,7 @@ class HomeScreen extends GetView<NewsController> {
       }
 
       return RefreshIndicator(
-        onRefresh: () => controller.fetchNews(),
+        onRefresh: () => syncService.syncLiveNewsData(),
         color: AppColors.accentBlue,
         child: ListView.separated(
           padding: const EdgeInsets.all(AppConstants.horizontalPadding),
@@ -95,7 +105,12 @@ class HomeScreen extends GetView<NewsController> {
   Widget _buildHistoryList(BuildContext context) {
     return Obx(() {
       if (controller.isHistoryLoading.value) {
-        return const Center(child: CircularProgressIndicator(color: AppColors.accentBlue));
+        return ListView.separated(
+          padding: const EdgeInsets.all(AppConstants.horizontalPadding),
+          itemCount: 6,
+          separatorBuilder: (context, index) => const SizedBox(height: 16),
+          itemBuilder: (context, index) => const NewsCardSkeleton(),
+        );
       }
 
       final history = controller.filteredHistory;

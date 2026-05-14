@@ -6,12 +6,14 @@ import '../../core/constants/app_constants.dart';
 class NewsRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // ---------- One-time reads ----------
+
   Future<List<NewsEvent>> getUpcomingNews() async {
     final snapshot = await _firestore
         .collection(AppConstants.newsEventsCollection)
         .where('status', isEqualTo: 'upcoming')
         .orderBy('time', descending: false)
-        .limit(50)
+        .limit(60)
         .get();
 
     return snapshot.docs.map((doc) => NewsEvent.fromFirestore(doc)).toList();
@@ -32,17 +34,54 @@ class NewsRepository {
         .collection(AppConstants.newsHistoryCollection)
         .where('event_name', isEqualTo: eventName)
         .orderBy('date', descending: true)
-        .limit(5)
+        .limit(10)
         .get();
 
     return snapshot.docs.map((doc) => NewsHistory.fromFirestore(doc)).toList();
   }
 
+  // ---------- Real-time stream ----------
+
+  /// Streams upcoming events in real-time — UI rebuilds automatically
+  /// when Firestore data changes (e.g. after Cloud Function writes actual value).
+  Stream<List<NewsEvent>> streamUpcomingNews() {
+    return _firestore
+        .collection(AppConstants.newsEventsCollection)
+        .where('status', isEqualTo: 'upcoming')
+        .orderBy('time', descending: false)
+        .limit(60)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => NewsEvent.fromFirestore(doc)).toList());
+  }
+
+  // ---------- Writes ----------
+
+  /// Saves a single event — uses merge so existing data is not overwritten
   Future<void> saveNewsEvent(NewsEvent event) async {
     await _firestore
         .collection(AppConstants.newsEventsCollection)
         .doc(event.id.isEmpty ? null : event.id)
         .set(event.toFirestore(), SetOptions(merge: true));
+  }
+
+  /// Batch-saves a list of events in a single Firestore round-trip (max 500)
+  Future<void> batchSaveNewsEvents(List<NewsEvent> events) async {
+    // Chunk into batches of 400 to stay safely under the 500-op limit
+    const int chunkSize = 400;
+    for (int i = 0; i < events.length; i += chunkSize) {
+      final chunk = events.sublist(
+          i, i + chunkSize > events.length ? events.length : i + chunkSize);
+
+      final WriteBatch batch = _firestore.batch();
+      for (final event in chunk) {
+        final docRef = _firestore
+            .collection(AppConstants.newsEventsCollection)
+            .doc(event.id.isEmpty ? null : event.id);
+        batch.set(docRef, event.toFirestore(), SetOptions(merge: true));
+      }
+      await batch.commit();
+    }
   }
 
   Future<void> saveNewsHistory(NewsHistory history) async {

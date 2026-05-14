@@ -4,24 +4,33 @@ import 'package:get/get.dart';
 import 'core/theme/app_theme.dart';
 import 'routes/app_routes.dart';
 import 'controllers/auth_controller.dart';
+import 'controllers/news_controller.dart';
+import 'controllers/analysis_controller.dart';
 import 'services/notification_service.dart';
 import 'services/sync_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Firebase
+
+  // 1. Firebase must be first — everything depends on it
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Initialize Services
+  // 2. Infrastructure services (FCM permissions, token)
   await Get.putAsync(() => NotificationService().init());
+
+  // 3. Data services — SyncService is a GetxService (stays alive for app lifetime)
   Get.put(SyncService());
 
-  // Initialize AuthController
-  Get.put(AuthController());
+  // 4. Global controllers — registered here so they survive route changes
+  Get.put(NewsController(), permanent: true);
+  Get.put(AuthController(), permanent: true);
+  Get.put(AnalysisController(), permanent: true);
+
+  // 5. Kick off initial sync in background — don't await, let UI load first
+  Get.find<SyncService>().syncLiveNewsData();
 
   runApp(const MyApp());
 }

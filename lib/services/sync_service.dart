@@ -1,109 +1,89 @@
 import 'package:get/get.dart';
 import '../data/repositories/news_repository.dart';
 import '../data/models/news_event_model.dart';
-import '../data/models/news_history_model.dart';
 import '../controllers/news_controller.dart';
+import 'fmp_service.dart';
+import 'forex_factory_service.dart';
 
 class SyncService extends GetxService {
   final NewsRepository _newsRepository = NewsRepository();
+  final FmpService _fmpService = FmpService();
+  final ForexFactoryService _ffService = ForexFactoryService();
 
-  Future<void> syncMockData() async {
+  // Cache guard — track last successful sync time
+  DateTime? _lastSyncTime;
+  static const Duration _minSyncInterval = Duration(hours: 1);
+
+  final RxBool isSyncing = false.obs;
+
+  /// Primary sync — uses FMP as main source, Forex Factory as fallback.
+  Future<void> syncLiveNewsData({bool force = false}) async {
+    // Respect rate limit — skip if synced recently, unless forced
+    if (!force && _lastSyncTime != null) {
+      final elapsed = DateTime.now().difference(_lastSyncTime!);
+      if (elapsed < _minSyncInterval) {
+        final remaining = _minSyncInterval - elapsed;
+        Get.snackbar(
+          'Already Up-to-Date',
+          'Next sync available in ${remaining.inMinutes}m ${remaining.inSeconds % 60}s',
+          duration: const Duration(seconds: 3),
+        );
+        return;
+      }
+    }
+
     try {
-      // 1. Create Mock Upcoming Events
-      final upcomingEvents = [
-        NewsEvent(
-          id: 'mock_nfp_may',
-          eventName: 'Non-Farm Employment Change',
-          currency: 'USD',
-          impact: 'high',
-          time: DateTime.now().add(const Duration(days: 3, hours: 14)),
-          status: NewsStatus.upcoming,
-          alertSent: false,
-          createdAt: DateTime.now(),
-          forecast: 243000,
-          previous: 303000,
-        ),
-        NewsEvent(
-          id: 'mock_cpi_may',
-          eventName: 'CPI m/m',
-          currency: 'USD',
-          impact: 'high',
-          time: DateTime.now().add(const Duration(days: 5, hours: 12)),
-          status: NewsStatus.upcoming,
-          alertSent: false,
-          createdAt: DateTime.now(),
-          forecast: 0.003,
-          previous: 0.004,
-        ),
-        NewsEvent(
-          id: 'mock_boe_rate',
-          eventName: 'Official Bank Rate',
-          currency: 'GBP',
-          impact: 'high',
-          time: DateTime.now().add(const Duration(days: 1, hours: 11)),
-          status: NewsStatus.upcoming,
-          alertSent: false,
-          createdAt: DateTime.now(),
-          forecast: 0.0525,
-          previous: 0.0525,
-        ),
-      ];
+      isSyncing.value = true;
+      List<NewsEvent> events = [];
 
-      for (var event in upcomingEvents) {
-        await _newsRepository.saveNewsEvent(event);
+      // --- Primary: FMP (has actual values, High+Medium impact, reliable) ---
+      try {
+        events = await _fmpService.fetchThisWeek();
+      } catch (fmpError) {
+        // --- Fallback: Forex Factory (free, no key, hourly updates) ---
+        Get.log('FMP failed, falling back to Forex Factory: $fmpError');
+        events = await _ffService.fetchWeeklyCalendar();
       }
 
-      // 2. Create Mock History Data for NFP
-      final nfpHistory = [
-        NewsHistory(
-          id: 'h_nfp_apr',
-          eventName: 'Non-Farm Employment Change',
-          currency: 'USD',
-          impact: 'high',
-          date: DateTime.now().subtract(const Duration(days: 30)),
-          forecast: 212000,
-          actual: 303000,
-          deviation: 91000,
-          priceBefore: 1.0820,
-          priceAfter15m: 1.0760,
-          priceAfter1h: 1.0740,
-          direction: 'bullish',
-          volatility: 85,
-          pipsMoved15m: 60,
-          pipsMoved1h: 80,
-        ),
-        NewsHistory(
-          id: 'h_nfp_mar',
-          eventName: 'Non-Farm Employment Change',
-          currency: 'USD',
-          impact: 'high',
-          date: DateTime.now().subtract(const Duration(days: 60)),
-          forecast: 200000,
-          actual: 275000,
-          deviation: 75000,
-          priceBefore: 1.0900,
-          priceAfter15m: 1.0840,
-          priceAfter1h: 1.0830,
-          direction: 'bullish',
-          volatility: 70,
-          pipsMoved15m: 60,
-          pipsMoved1h: 70,
-        ),
-      ];
-
-      for (var history in nfpHistory) {
-        await _newsRepository.saveNewsHistory(history);
+      if (events.isEmpty) {
+        Get.snackbar('Sync', 'No events returned from API.');
+        return;
       }
 
-      // 3. Trigger refresh in NewsController
+      // Write all events to Firestore in a single batch round-trip
+      final cutoff = DateTime.now().subtract(const Duration(days: 7));
+      final eventsToSave = events
+          .where((e) => e.time.isAfter(cutoff))
+          .toList();
+
+      await _newsRepository.batchSaveNewsEvents(eventsToSave);
+      final int saved = eventsToSave.length;
+
+      // Record sync time
+      _lastSyncTime = DateTime.now();
+
+      // Refresh NewsController list in UI
       if (Get.isRegistered<NewsController>()) {
         Get.find<NewsController>().fetchNews();
-        Get.find<NewsController>().fetchHistory();
       }
 
-      Get.snackbar('Sync Successful', 'Mock data has been populated in Firestore.');
+      Get.snackbar(
+        'Sync Complete ✓',
+        'Loaded $saved events (High & Medium impact)',
+        duration: const Duration(seconds: 3),
+      );
     } catch (e) {
       Get.snackbar('Sync Failed', e.toString());
+    } finally {
+      isSyncing.value = false;
     }
+  }
+
+  /// Force-refresh ignoring cache — use sparingly
+  Future<void> forceSync() => syncLiveNewsData(force: true);
+
+  // Deprecated — keeping stub so nothing breaks
+  Future<void> syncMockData() async {
+    Get.snackbar('Deprecated', 'Use syncLiveNewsData() instead.');
   }
 }

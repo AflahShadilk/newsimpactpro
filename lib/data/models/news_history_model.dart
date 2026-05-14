@@ -38,13 +38,13 @@ class NewsHistory {
   });
 
   factory NewsHistory.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+    final data = doc.data() as Map<String, dynamic>? ?? {};
     return NewsHistory(
       id: doc.id,
       eventName: data['event_name'] ?? '',
       currency: data['currency'] ?? '',
       impact: data['impact'] ?? '',
-      date: (data['date'] as Timestamp).toDate(),
+      date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       forecast: (data['forecast'] as num?)?.toDouble() ?? 0.0,
       actual: (data['actual'] as num?)?.toDouble() ?? 0.0,
       deviation: (data['deviation'] as num?)?.toDouble() ?? 0.0,
@@ -52,9 +52,9 @@ class NewsHistory {
       priceAfter15m: (data['price_after_15m'] as num?)?.toDouble() ?? 0.0,
       priceAfter1h: (data['price_after_1h'] as num?)?.toDouble() ?? 0.0,
       direction: data['direction'] ?? 'neutral',
-      volatility: data['volatility'] ?? 0,
-      pipsMoved15m: data['pips_moved_15m'] ?? 0,
-      pipsMoved1h: data['pips_moved_1h'] ?? 0,
+      volatility: (data['volatility'] as num?)?.toInt() ?? 0,
+      pipsMoved15m: (data['pips_moved_15m'] as num?)?.toInt() ?? 0,
+      pipsMoved1h: (data['pips_moved_1h'] as num?)?.toInt() ?? 0,
       createdAt: (data['created_at'] as Timestamp?)?.toDate(),
     );
   }

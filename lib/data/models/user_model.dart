@@ -58,7 +58,7 @@ class UserModel {
       fcmToken: data['fcm_token'] ?? '',
       currencies: List<String>.from(data['currencies'] ?? []),
       impact: List<String>.from(data['impact'] ?? []),
-      alertTime: data['alert_time'] ?? 15,
+      alertTime: (data['alert_time'] as num?)?.toInt() ?? 15,
       focusMode: data['focus_mode'] ?? false,
       timezone: data['timezone'] ?? 'UTC',
       notificationsEnabled: data['notifications_enabled'] ?? true,

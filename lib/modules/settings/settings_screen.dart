@@ -1,3 +1,5 @@
+// ignore_for_file: unused_local_variable, deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
@@ -74,7 +76,7 @@ class SettingsScreen extends StatelessWidget {
               subtitle: 'Receive notifications before events',
               trailing: Obx(() => Switch(
                     value: authController.userModel.value?.notificationsEnabled ?? true,
-                    onChanged: (val) => authController.updateUser({'notificationsEnabled': val}),
+                    onChanged: (val) => authController.updateUser({'notifications_enabled': val}),
                     activeColor: AppColors.accentBlue,
                   )),
             ),
@@ -117,10 +119,10 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             _buildSettingTile(
-              title: 'Sync Mock Data',
-              subtitle: 'Populate Firestore with sample news',
+              title: 'Sync Live Data',
+              subtitle: 'Fetch latest news from Forex Factory',
               trailing: const Icon(Icons.sync_rounded, color: AppColors.accentBlue),
-              onTap: () => syncService.syncMockData(),
+              onTap: () => syncService.syncLiveNewsData(),
             ),
 
             const SizedBox(height: 48),
@@ -196,16 +198,19 @@ class SettingsScreen extends StatelessWidget {
           children: [
             const Text('Alert Timing', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
               children: [5, 10, 15, 30, 60].map((mins) {
                 return InkWell(
                   onTap: () {
-                    controller.updateUser({'alertTime': mins});
+                    controller.updateUser({'alert_time': mins});
                     Get.back();
                   },
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    width: 60,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
                       color: controller.userModel.value?.alertTime == mins
                           ? AppColors.accentBlue

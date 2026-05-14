@@ -1,8 +1,11 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/news_event_model.dart';
 import '../../controllers/news_controller.dart';
+import '../../controllers/analysis_controller.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
@@ -14,11 +17,16 @@ class NewsDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final NewsEvent event = Get.arguments;
     final newsController = Get.find<NewsController>();
+    final analysisController = Get.find<AnalysisController>();
+    
     final timeFormat = DateFormat('HH:mm');
     final dateFormat = DateFormat('EEEE, MMMM d, yyyy');
 
     // Fetch history for this specific event
     newsController.fetchEventHistory(event.eventName);
+
+    // Calculate metrics
+    final bias = analysisController.calculateBias(event);
 
     return Scaffold(
       appBar: AppBar(
@@ -110,11 +118,23 @@ class NewsDetailScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                _buildStatCard('Actual', event.actual?.toString() ?? 'TBD', AppColors.accentBlue),
+                _buildStatCard(
+                  'Actual',
+                  event.actualRaw ?? event.actual?.toString() ?? 'TBD',
+                  AppColors.accentBlue,
+                ),
                 const SizedBox(width: 12),
-                _buildStatCard('Forecast', event.forecast?.toString() ?? '--', AppColors.textPrimary),
+                _buildStatCard(
+                  'Forecast',
+                  event.forecastRaw ?? event.forecast?.toString() ?? '--',
+                  AppColors.textPrimary,
+                ),
                 const SizedBox(width: 12),
-                _buildStatCard('Previous', event.previous?.toString() ?? '--', AppColors.textSecondary),
+                _buildStatCard(
+                  'Previous',
+                  event.previousRaw ?? event.previous?.toString() ?? '--',
+                  AppColors.textSecondary,
+                ),
               ],
             ),
             
@@ -145,20 +165,55 @@ class NewsDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 32),
             
-            // Market Insight
+            // Market Insight & Bias
             Text(
               'Market Insight',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: AppTheme.glassDecoration(opacity: 0.03),
-              child: Text(
-                'This event typically causes ${event.impact} volatility in the ${event.currency} pairs. Traders should watch for deviations from the forecast of ${event.forecast ?? "N/A"}. A higher than expected reading is generally positive/bullish for the ${event.currency}, while a lower than expected reading is negative/bearish.',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5),
-              ),
-            ),
+            Obx(() {
+              final history = newsController.specificEventHistory;
+              final avgVol = analysisController.calculateAverageVolatility(history);
+              final confidence = analysisController.calculateConfidence(history, bias);
+              
+              return Container(
+                padding: const EdgeInsets.all(20),
+                decoration: AppTheme.glassDecoration(opacity: 0.03),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Trading Bias', style: TextStyle(color: AppColors.textSecondary)),
+                        _buildBiasChip(bias),
+                      ],
+                    ),
+                    const Divider(height: 32, color: AppColors.glassBorder),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Avg Volatility (15m)', style: TextStyle(color: AppColors.textSecondary)),
+                        Text('$avgVol pips', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.accentBlue)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Historical Confidence', style: TextStyle(color: AppColors.textSecondary)),
+                        Text('$confidence%', style: TextStyle(fontWeight: FontWeight.bold, color: confidence > 60 ? AppColors.accentGreen : AppColors.accentOrange)),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'This event typically causes $avgVol pips of volatility. Historical consistency for the ${bias.name} direction is $confidence%. Traders should watch for deviations from the forecast of ${event.forecastRaw ?? "N/A"}.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              );
+            }),
             
             const SizedBox(height: 40),
             
@@ -268,5 +323,49 @@ class NewsDetailScreen extends StatelessWidget {
       default:
         return AppColors.textSecondary;
     }
+  }
+
+  Widget _buildBiasChip(Bias bias) {
+    Color color;
+    String label;
+    IconData icon;
+
+    switch (bias) {
+      case Bias.bullish:
+        color = AppColors.accentGreen;
+        label = 'BULLISH';
+        icon = Icons.trending_up_rounded;
+        break;
+      case Bias.bearish:
+        color = AppColors.accentRed;
+        label = 'BEARISH';
+        icon = Icons.trending_down_rounded;
+        break;
+      case Bias.neutral:
+        color = AppColors.textSecondary;
+        label = 'NEUTRAL';
+        icon = Icons.trending_flat_rounded;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1),
+          ),
+        ],
+      ),
+    );
   }
 }

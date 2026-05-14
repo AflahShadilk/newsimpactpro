@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:get/get.dart';
 import '../data/models/news_event_model.dart';
 import '../data/models/news_history_model.dart';
@@ -9,21 +10,51 @@ class NewsController extends GetxController {
   final RxList<NewsEvent> events = <NewsEvent>[].obs;
   final RxList<NewsHistory> historyEvents = <NewsHistory>[].obs;
   final RxList<NewsHistory> specificEventHistory = <NewsHistory>[].obs;
-  
+
   final RxBool isLoading = false.obs;
   final RxBool isHistoryLoading = false.obs;
-  
-  // Filters
+
+  // Active currency + impact filters
   final RxList<String> selectedCurrencies = <String>['USD', 'EUR', 'GBP'].obs;
   final RxList<String> selectedImpacts = <String>['high', 'medium'].obs;
+
+  StreamSubscription<List<NewsEvent>>? _eventsSubscription;
 
   @override
   void onInit() {
     super.onInit();
-    fetchNews();
+    // Subscribe to Firestore real-time stream — no polling required
+    _subscribeToEvents();
+    // History is fetched once (not streamed — it's historical, rarely changes)
     fetchHistory();
   }
 
+  @override
+  void onClose() {
+    // Always cancel stream subscriptions to prevent memory leaks
+    _eventsSubscription?.cancel();
+    super.onClose();
+  }
+
+  /// Listens to Firestore upcoming events in real-time.
+  /// Events list updates automatically when Cloud Function writes new data.
+  void _subscribeToEvents() {
+    isLoading.value = true;
+    _eventsSubscription = _newsRepository.streamUpcomingNews().listen(
+      (incoming) {
+        events.value = incoming;
+        isLoading.value = false;
+      },
+      onError: (e) {
+        Get.log('Stream error: $e');
+        isLoading.value = false;
+        // Fallback to one-time fetch if stream fails
+        fetchNews();
+      },
+    );
+  }
+
+  /// Manual one-time refresh — used as fallback if stream fails
   Future<void> fetchNews() async {
     try {
       isLoading.value = true;
@@ -51,11 +82,14 @@ class NewsController extends GetxController {
   Future<void> fetchEventHistory(String eventName) async {
     try {
       specificEventHistory.clear();
-      specificEventHistory.value = await _newsRepository.getEventHistory(eventName);
+      specificEventHistory.value =
+          await _newsRepository.getEventHistory(eventName);
     } catch (e) {
-      print('Error fetching event history: $e');
+      Get.log('Error fetching event history: $e');
     }
   }
+
+  // ---------- Computed filtered lists ----------
 
   List<NewsEvent> get filteredEvents {
     return events.where((event) {
@@ -73,9 +107,14 @@ class NewsController extends GetxController {
     }).toList();
   }
 
+  // ---------- Filter toggle methods ----------
+
   void toggleCurrency(String currency) {
     if (selectedCurrencies.contains(currency)) {
-      selectedCurrencies.remove(currency);
+      if (selectedCurrencies.length > 1) {
+        // Prevent deselecting all currencies
+        selectedCurrencies.remove(currency);
+      }
     } else {
       selectedCurrencies.add(currency);
     }
@@ -83,9 +122,21 @@ class NewsController extends GetxController {
 
   void toggleImpact(String impact) {
     if (selectedImpacts.contains(impact)) {
-      selectedImpacts.remove(impact);
+      if (selectedImpacts.length > 1) {
+        // Prevent deselecting all impact levels
+        selectedImpacts.remove(impact);
+      }
     } else {
       selectedImpacts.add(impact);
     }
+  }
+
+  /// Sync selected currencies from user settings into the filter
+  void syncFiltersFromUser({
+    required List<String> currencies,
+    required List<String> impacts,
+  }) {
+    selectedCurrencies.value = currencies;
+    selectedImpacts.value = impacts;
   }
 }
