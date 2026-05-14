@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
+import 'package:newsimpactpro/services/notification_service.dart';
 import '../services/auth_service.dart';
 import '../data/repositories/user_repository.dart';
 import '../data/models/user_model.dart';

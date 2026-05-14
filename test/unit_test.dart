@@ -21,6 +21,8 @@ void main() {
         time: DateTime.now(),
         forecast: 0.2,
         actual: 0.4,
+        status: NewsStatus.released,
+        alertSent: false,
         source: NewsSource.fmp,
       );
 
@@ -36,7 +38,9 @@ void main() {
         impact: 'high',
         time: DateTime.now(),
         forecast: 3.8,
-        actual: 4.0, // Higher unemployment is bad (Bearish)
+        actual: 4.0,
+        status: NewsStatus.released,
+        alertSent: false,
         source: NewsSource.fmp,
       );
 
@@ -57,13 +61,13 @@ void main() {
 
     test('Confidence Score Calculation', () {
       final history = [
-        _mockHistory(pips: 10), // Match for Bullish
-        _mockHistory(pips: 5),  // Match for Bullish
-        _mockHistory(pips: -5), // No match
+        _mockHistory(pips: 10),
+        _mockHistory(pips: 5),
+        _mockHistory(pips: -5),
       ];
 
       final confidence = controller.calculateConfidence(history, Bias.bullish);
-      expect(confidence, 67); // (2/3) * 100
+      expect(confidence, 67);
     });
   });
 
@@ -71,14 +75,13 @@ void main() {
     test('fromMap should handle missing fields gracefully', () {
       final data = {
         'email': 'test@example.com',
-        // 'currencies' is missing
       };
       final user = UserModel.fromMap(data, 'uid123');
 
       expect(user.uid, 'uid123');
       expect(user.email, 'test@example.com');
-      expect(user.currencies, isNotEmpty); // Uses default
-      expect(user.alertTime, 15); // Uses default
+      expect(user.currencies, isNotEmpty);
+      expect(user.alertTime, 15);
     });
 
     test('toFirestore should preserve types', () {

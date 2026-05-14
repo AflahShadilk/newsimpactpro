@@ -121,7 +121,7 @@ class HomeScreen extends GetView<NewsController> {
       final history = controller.filteredHistory;
 
       if (history.isEmpty) {
-        return _buildEmptyState(context, 'No historical data found');
+        return _buildEmptyState('No historical data found');
       }
 
       return RefreshIndicator(

@@ -150,7 +150,7 @@ class SettingsScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
+    )));
   }
 
   Widget _buildSectionHeader(String title) {

@@ -237,7 +237,7 @@ class NewsDetailScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
+    )));
   }
 
   Widget _buildHistoryRow(dynamic h) {
