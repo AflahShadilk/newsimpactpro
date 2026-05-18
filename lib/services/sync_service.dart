@@ -36,9 +36,9 @@ class SyncService extends GetxService {
       isSyncing.value = true;
       List<NewsEvent> events = [];
 
-      // --- Primary: FMP (has actual values, High+Medium impact, reliable) ---
+      // --- Primary: FMP (today + next 14 days, high+medium impact) ---
       try {
-        events = await _fmpService.fetchThisWeek();
+        events = await _fmpService.fetchUpcoming();
       } catch (fmpError) {
         // --- Fallback: Forex Factory (free, no key, hourly updates) ---
         Get.log('FMP failed, falling back to Forex Factory: $fmpError');
@@ -50,8 +50,8 @@ class SyncService extends GetxService {
         return;
       }
 
-      // Write all events to Firestore in a single batch round-trip
-      final cutoff = DateTime.now().subtract(const Duration(days: 7));
+      // Only save events from today onward — discard past events
+      final cutoff = DateTime.now().toUtc();
       final eventsToSave = events
           .where((e) => e.time.isAfter(cutoff))
           .toList();

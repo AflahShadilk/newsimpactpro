@@ -30,12 +30,35 @@ class FmpService {
     }
   }
 
-  /// Convenience method — fetches the current week (Mon → Sun)
+  /// Fetches today + next 7 days — rolling window, always fresh
   Future<List<NewsEvent>> fetchThisWeek() {
     final now = DateTime.now();
-    final from = now.subtract(Duration(days: now.weekday - 1)); // Monday
-    final to = from.add(const Duration(days: 6));               // Sunday
+    final from = DateTime(now.year, now.month, now.day); // today at midnight
+    final to = from.add(const Duration(days: 7));        // 7 days forward
     return fetchCalendar(from: from, to: to);
+  }
+
+  /// Fetches the following 7 days (days 8–14 from today)
+  Future<List<NewsEvent>> fetchNextWeek() {
+    final now = DateTime.now();
+    final from = DateTime(now.year, now.month, now.day).add(const Duration(days: 8));
+    final to = from.add(const Duration(days: 6));
+    return fetchCalendar(from: from, to: to);
+  }
+
+  /// Merges this week + next week into one list (deduped by id)
+  Future<List<NewsEvent>> fetchUpcoming() async {
+    final results = await Future.wait([fetchThisWeek(), fetchNextWeek()]);
+    final seen = <String>{};
+    final merged = <NewsEvent>[];
+    for (final list in results) {
+      for (final e in list) {
+        if (seen.add(e.id)) merged.add(e);
+      }
+    }
+    // Sort chronologically
+    merged.sort((a, b) => a.time.compareTo(b.time));
+    return merged;
   }
 }
 
@@ -66,9 +89,12 @@ List<NewsEvent> _parseFmpEvents(
     final NewsStatus status =
         actual != null ? NewsStatus.released : NewsStatus.upcoming;
 
+    final String rawEventName = (item['event'] ?? '').toString();
+    final String sanitizedEventName = rawEventName.replaceAll(RegExp(r'[ /\\?#%*+:|"<>]'), '_');
+
     events.add(NewsEvent(
-      id: 'fmp_${country}_${(item['event'] ?? '').toString().replaceAll(' ', '_')}_${time.millisecondsSinceEpoch}',
-      eventName: item['event'] ?? 'Unknown Event',
+      id: 'fmp_${country}_${sanitizedEventName}_${time.millisecondsSinceEpoch}',
+      eventName: rawEventName.isEmpty ? 'Unknown Event' : rawEventName,
       currency: currency,
       impact: impact,
       time: time,

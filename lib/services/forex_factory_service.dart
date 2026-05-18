@@ -52,8 +52,10 @@ List<NewsEvent> _parseForexFactoryEvents(
     final String? previousRaw = item['previous']?.toString();
     final String? actualRaw   = item['actual']?.toString();
 
+    final String sanitizedTitle = title.replaceAll(RegExp(r'[ /\\?#%*+:|"<>]'), '_');
+
     events.add(NewsEvent(
-      id: 'ff_${country}_${title.replaceAll(' ', '_')}_${time.millisecondsSinceEpoch}',
+      id: 'ff_${country}_${sanitizedTitle}_${time.millisecondsSinceEpoch}',
       eventName: title,
       currency: currency,
       impact: impact,

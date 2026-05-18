@@ -9,9 +9,12 @@ class NewsRepository {
   // ---------- One-time reads ----------
 
   Future<List<NewsEvent>> getUpcomingNews() async {
+    // Filter by time >= now so we always see future events,
+    // regardless of whether status field was updated by a Cloud Function.
+    final now = Timestamp.fromDate(DateTime.now().toUtc());
     final snapshot = await _firestore
         .collection(AppConstants.newsEventsCollection)
-        .where('status', isEqualTo: 'upcoming')
+        .where('time', isGreaterThanOrEqualTo: now)
         .orderBy('time', descending: false)
         .limit(60)
         .get();
@@ -45,9 +48,14 @@ class NewsRepository {
   /// Streams upcoming events in real-time — UI rebuilds automatically
   /// when Firestore data changes (e.g. after Cloud Function writes actual value).
   Stream<List<NewsEvent>> streamUpcomingNews() {
+    // Use time-based filter so the stream reflects real upcoming events.
+    // A 5-minute buffer is subtracted so events stay visible right at release time.
+    final now = Timestamp.fromDate(
+      DateTime.now().toUtc().subtract(const Duration(minutes: 5)),
+    );
     return _firestore
         .collection(AppConstants.newsEventsCollection)
-        .where('status', isEqualTo: 'upcoming')
+        .where('time', isGreaterThanOrEqualTo: now)
         .orderBy('time', descending: false)
         .limit(60)
         .snapshots()

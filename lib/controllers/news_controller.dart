@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../data/models/news_event_model.dart';
 import '../data/models/news_history_model.dart';
 import '../data/repositories/news_repository.dart';
+import '../services/sync_service.dart';
 
 class NewsController extends GetxController {
   final NewsRepository _newsRepository = NewsRepository();
@@ -20,38 +21,64 @@ class NewsController extends GetxController {
 
   StreamSubscription<List<NewsEvent>>? _eventsSubscription;
 
+  // Resubscribes every 10 min so the time-based Firestore cutoff stays fresh
+  Timer? _streamRefreshTimer;
+
   @override
   void onInit() {
     super.onInit();
     // Subscribe to Firestore real-time stream — no polling required
     _subscribeToEvents();
+    // Refresh stream every 10 min so the time >= now filter stays accurate
+    _streamRefreshTimer = Timer.periodic(
+      const Duration(minutes: 10),
+      (_) => _resubscribeToEvents(),
+    );
+    // Trigger an auto-sync if Firestore has no data yet
+    _triggerSyncIfEmpty();
     // History is fetched once (not streamed — it's historical, rarely changes)
     fetchHistory();
   }
 
   @override
   void onClose() {
-    // Always cancel stream subscriptions to prevent memory leaks
     _eventsSubscription?.cancel();
+    _streamRefreshTimer?.cancel();
     super.onClose();
   }
 
   /// Listens to Firestore upcoming events in real-time.
-  /// Events list updates automatically when Cloud Function writes new data.
   void _subscribeToEvents() {
     isLoading.value = true;
     _eventsSubscription = _newsRepository.streamUpcomingNews().listen(
       (incoming) {
         events.value = incoming;
         isLoading.value = false;
+        // If Firestore returned empty, kick off a fresh sync from the API
+        if (incoming.isEmpty) _triggerSyncIfEmpty();
       },
       onError: (e) {
         Get.log('Stream error: $e');
         isLoading.value = false;
-        // Fallback to one-time fetch if stream fails
-        fetchNews();
+        fetchNews(); // Fallback to one-time fetch
       },
     );
+  }
+
+  /// Cancels and recreates the stream so the time >= now cutoff is recalculated.
+  void _resubscribeToEvents() {
+    _eventsSubscription?.cancel();
+    _subscribeToEvents();
+  }
+
+  /// Triggers a background sync the first time Firestore returns empty results.
+  void _triggerSyncIfEmpty() {
+    if (!Get.isRegistered<SyncService>()) return;
+    final sync = Get.find<SyncService>();
+    if (!sync.isSyncing.value) {
+      Get.log('NewsController: Firestore empty — triggering auto-sync');
+      sync.syncLiveNewsData(force: true);
+    }
   }
 
   /// Manual one-time refresh — used as fallback if stream fails
@@ -92,7 +119,10 @@ class NewsController extends GetxController {
   // ---------- Computed filtered lists ----------
 
   List<NewsEvent> get filteredEvents {
+    final now = DateTime.now().toUtc().subtract(const Duration(minutes: 5));
     return events.where((event) {
+      // Client-side safety net: never show events more than 5 min in the past
+      if (event.time.toUtc().isBefore(now)) return false;
       final currencyMatch = selectedCurrencies.contains(event.currency);
       final impactMatch = selectedImpacts.contains(event.impact);
       return currencyMatch && impactMatch;
